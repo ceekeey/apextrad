@@ -43,7 +43,7 @@ const navItems = [
   { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { to: '/trades', label: 'Trades', icon: CalendarDays },
   { to: '/analytics', label: 'Analytics', icon: BarChart3 },
-  { to: '/journal', label: 'Journal', icon: NotebookPen },
+  // { to: '/journal', label: 'Journal', icon: NotebookPen },
   { to: '/plans', label: 'Trading Plans', icon: BriefcaseBusiness },
   { to: '/settings', label: 'Settings', icon: Settings },
 ];
@@ -71,6 +71,48 @@ const getResultBadge = (result) => {
   if (normalized.includes('win')) return 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/30';
   if (normalized.includes('loss')) return 'bg-red-500/15 text-red-300 border border-red-500/30';
   return 'bg-amber-500/15 text-amber-300 border border-amber-500/30';
+};
+
+const resolveImageUrl = (value) => {
+  if (!value) return null;
+
+  const normalized = typeof value === 'string' ? value.trim() : '';
+  if (!normalized) return null;
+
+  if (/^(data:|https?:\/\/|blob:)/i.test(normalized)) return normalized;
+  if (normalized.startsWith('//')) return `https:${normalized}`;
+
+  const apiBase = (import.meta.env.VITE_API_URL || 'https://jornal.rgmrabagardama.com.ng/api').replace(/\/api\/?$/, '');
+  const root = apiBase.replace(/\/$/, '');
+
+  if (normalized.startsWith('/')) {
+    return `${root}${normalized}`;
+  }
+
+  return `${root}/${normalized}`;
+};
+
+const getChartImageValue = (journal, key) => {
+  const lookupTable = {
+    '4H': ['highTimeFrameImage', 'highTimeFramelmage', 'highTimeFrame'],
+    '15M': ['mediumTimeFrameImage', 'mediumTimeFramelmage', 'mediumTimeFrame'],
+    '5M': ['lowTimeFrameImage', 'lowTimeFramelmage', 'lowTimeFrame'],
+  };
+
+  const candidates = lookupTable[key] || [];
+  for (const field of candidates) {
+    const value = journal?.[field];
+    if (value !== null && value !== undefined && value !== '') return value;
+  }
+
+  return null;
+};
+
+const formatTradeDate = (value) => {
+  if (!value) return 'N/A';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
 };
 
 function App() {
@@ -111,7 +153,8 @@ function AppRoutes() {
         <Route path="/trades" element={<TradesPage />} />
         <Route path="/journal" element={<JournalPage />} />
         <Route path="/journal/new" element={<JournalFormPage />} />
-        <Route path="/journal/:id" element={<JournalFormPage />} />
+        <Route path="/journal/:id/edit" element={<JournalFormPage />} />
+        <Route path="/journal/:id" element={<JournalDetailPage />} />
         <Route path="/analytics" element={<AnalyticsPage />} />
         <Route path="/plans" element={<PlansPage />} />
         <Route path="/plans/:id" element={<PlanDetailPage />} />
@@ -711,40 +754,235 @@ function JournalPage() {
         </div>
       ) : visibleJournals.length ? (
         <div className="space-y-4">
-          {visibleJournals.map((journal) => (
-            <div key={journal._id || journal.id} className="rounded-3xl border border-slate-800 bg-slate-900 p-4 shadow-glow">
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-lg font-semibold text-white">{journal.asset || 'Unknown pair'}</span>
-                    <span className={`inline-flex rounded-full px-2 py-1 text-[10px] font-medium ${getResultBadge(journal.result || (Number(journal.pnl || 0) >= 0 ? 'Win' : 'Loss'))}`}>
-                      {journal.result || (Number(journal.pnl || 0) >= 0 ? 'Win' : 'Loss')}
-                    </span>
+          {visibleJournals.map((journal) => {
+            const tradeId = journal._id || journal.id;
+            const route = `/journal/${tradeId}${selectedDate ? `?date=${selectedDate}` : ''}`;
+            const handleTradeOpen = () => navigate(route);
+
+            return (
+              <article
+                key={tradeId}
+                role="button"
+                tabIndex={0}
+                onClick={handleTradeOpen}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault();
+                    handleTradeOpen();
+                  }
+                }}
+                className="cursor-pointer rounded-3xl border border-slate-800 bg-slate-900 p-4 shadow-glow transition hover:border-slate-700 hover:bg-slate-900/90 focus:outline-none focus:ring-2 focus:ring-blue-500/60"
+              >
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-lg font-semibold text-white">{journal.asset || 'Unknown pair'}</span>
+                      <span className={`inline-flex rounded-full px-2 py-1 text-[10px] font-medium ${getResultBadge(journal.result || (Number(journal.pnl || 0) >= 0 ? 'Win' : 'Loss'))}`}>
+                        {journal.result || (Number(journal.pnl || 0) >= 0 ? 'Win' : 'Loss')}
+                      </span>
+                    </div>
+                    <div className="mt-1 text-sm text-slate-400">{journal.type || 'LONG'} • {formatTradeDate(journal.date || journal.createdAt)}</div>
                   </div>
-                  <div className="mt-1 text-sm text-slate-400">{journal.type || 'LONG'} • {new Date(journal.date || journal.createdAt).toLocaleDateString()}</div>
+
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        navigate(`/journal/${tradeId}/edit${selectedDate ? `?date=${selectedDate}` : ''}`);
+                      }}
+                      className="inline-flex items-center gap-2 rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-200 hover:border-slate-600"
+                    >
+                      <Pencil className="h-4 w-4" /> Edit
+                    </button>
+                    <button
+                      type="button"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        handleDelete(tradeId);
+                      }}
+                      className="inline-flex items-center gap-2 rounded-xl border border-red-500/25 bg-red-500/10 px-3 py-2 text-sm text-red-300 hover:bg-red-500/15"
+                    >
+                      <Trash2 className="h-4 w-4" /> Delete
+                    </button>
+                  </div>
                 </div>
 
-                <div className="flex items-center gap-2">
-                  <button onClick={() => navigate(`/journal/${journal._id || journal.id}`)} className="inline-flex items-center gap-2 rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-200 hover:border-slate-600">
-                    <Pencil className="h-4 w-4" /> Edit
-                  </button>
-                  <button onClick={() => handleDelete(journal._id || journal.id)} className="inline-flex items-center gap-2 rounded-xl border border-red-500/25 bg-red-500/10 px-3 py-2 text-sm text-red-300 hover:bg-red-500/15">
-                    <Trash2 className="h-4 w-4" /> Delete
-                  </button>
+                <div className="mt-4 grid gap-3 md:grid-cols-4">
+                  <InfoChip label="Entry" value={journal.entryPrice ?? '—'} />
+                  <InfoChip label="Exit" value={journal.exitPrice ?? '—'} />
+                  <InfoChip label="Risk" value={journal.risk ?? '—'} />
+                  <InfoChip label="PnL" value={currency(journal.pnl || 0)} tone={Number(journal.pnl || 0) >= 0 ? 'green' : 'red'} />
                 </div>
-              </div>
-
-              <div className="mt-4 grid gap-3 md:grid-cols-4">
-                <InfoChip label="Entry" value={journal.entryPrice ?? '—'} />
-                <InfoChip label="Exit" value={journal.exitPrice ?? '—'} />
-                <InfoChip label="Risk" value={journal.risk ?? '—'} />
-                <InfoChip label="PnL" value={currency(journal.pnl || 0)} tone={Number(journal.pnl || 0) >= 0 ? 'green' : 'red'} />
-              </div>
-            </div>
-          ))}
+              </article>
+            );
+          })}
         </div>
       ) : (
         <EmptyState title="No journals found" description={selectedDate ? `There are no trades recorded for ${selectedDate}.` : 'Start by logging your first trade.'} action={{ label: 'Create journal', onClick: () => navigate('/journal/new') }} />
+      )}
+    </div>
+  );
+}
+
+function JournalDetailPage() {
+  const navigate = useNavigate();
+  const { id } = useParams();
+  const [searchParams] = useSearchParams();
+  const [journal, setJournal] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [selectedImage, setSelectedImage] = useState(null);
+
+  useEffect(() => {
+    const fetchJournal = async () => {
+      try {
+        setLoading(true);
+        const response = await getJournalById(id);
+        const entry = response?.data || response?.journal || response;
+        setJournal(entry || null);
+      } catch {
+        toast.error('Unable to load trade details.');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (id) fetchJournal();
+  }, [id]);
+
+  const selectedDate = searchParams.get('date');
+  const tradeId = journal?._id || journal?.id;
+  const result = journal?.result || (Number(journal?.pnl || 0) > 0 ? 'Win' : Number(journal?.pnl || 0) < 0 ? 'Loss' : 'Break Even');
+  const chartScreenshots = {
+    '4H': resolveImageUrl(getChartImageValue(journal, '4H')),
+    '15M': resolveImageUrl(getChartImageValue(journal, '15M')),
+    '5M': resolveImageUrl(getChartImageValue(journal, '5M')),
+  };
+
+  if (loading) return <LoadingState label="Loading trade details…" />;
+
+  if (!journal) {
+    return (
+      <EmptyState
+        title="Trade not found"
+        description="The requested journal entry could not be loaded."
+        action={{ label: 'Back to journal', onClick: () => navigate(`/journal${selectedDate ? `?date=${selectedDate}` : ''}`) }}
+      />
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <button
+        type="button"
+        onClick={() => navigate(`/journal${selectedDate ? `?date=${selectedDate}` : ''}`)}
+        className="inline-flex items-center gap-2 rounded-xl border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-200 hover:border-slate-600"
+      >
+        <ArrowLeft className="h-4 w-4" /> Back
+      </button>
+
+      <div className="rounded-3xl border border-slate-800 bg-slate-900 p-5 shadow-glow">
+        <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+          <div>
+            <div className="text-xs uppercase tracking-[0.18em] text-slate-400">Trade overview</div>
+            <div className="mt-2 flex flex-wrap items-center gap-2">
+              <h2 className="text-3xl font-bold text-white">{journal.asset || 'Unknown pair'}</h2>
+              <span className={`inline-flex rounded-full px-2.5 py-1 text-[10px] font-medium uppercase tracking-[0.12em] ${journal.type === 'SHORT' ? 'bg-slate-700 text-slate-100' : 'bg-blue-500/15 text-blue-300 border border-blue-500/30'}`}>
+                {journal.type || 'LONG'}
+              </span>
+              <span className={`inline-flex rounded-full px-2.5 py-1 text-[10px] font-medium uppercase tracking-[0.12em] ${getResultBadge(result)}`}>
+                {result}
+              </span>
+            </div>
+            <p className="mt-2 text-sm text-slate-400">{formatTradeDate(journal.date || journal.createdAt)}</p>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => navigate(`/journal/${tradeId}/edit${selectedDate ? `?date=${selectedDate}` : ''}`)}
+              className="inline-flex items-center gap-2 rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-200 hover:border-slate-600"
+            >
+              <Pencil className="h-4 w-4" /> Edit
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div className="grid gap-6 xl:grid-cols-[1.3fr_0.7fr]">
+        <div className="space-y-6">
+          <div className="rounded-3xl border border-slate-800 bg-slate-900 p-4 shadow-glow">
+            <div className="mb-4 text-sm font-semibold uppercase tracking-[0.14em] text-slate-400">Financial summary</div>
+            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+              <InfoChip label="PnL" value={currency(journal.pnl || 0)} tone={Number(journal.pnl || 0) >= 0 ? 'green' : 'red'} />
+              <InfoChip label="Risk" value={journal.risk ?? '—'} />
+              <InfoChip label="Lot size" value={journal.lotSize ?? '—'} />
+              <InfoChip label="Result" value={journal.result || result} />
+            </div>
+          </div>
+
+          <div className="rounded-3xl border border-slate-800 bg-slate-900 p-4 shadow-glow">
+            <div className="mb-4 text-sm font-semibold uppercase tracking-[0.14em] text-slate-400">Trade details</div>
+            <div className="grid gap-3 md:grid-cols-2">
+              <InfoChip label="Entry price" value={journal.entryPrice ?? '—'} />
+              <InfoChip label="Exit price" value={journal.exitPrice ?? '—'} />
+              <InfoChip label="Stop loss" value={journal.stopLoss ?? '—'} />
+              <InfoChip label="Take profit" value={journal.takeProfit ?? '—'} />
+              <InfoChip label="Trading plan" value={journal.setup || journal.plan?.name || 'General setup'} />
+              <InfoChip label="Trade date" value={formatTradeDate(journal.date || journal.createdAt)} />
+            </div>
+          </div>
+
+          <div className="rounded-3xl border border-slate-800 bg-slate-900 p-4 shadow-glow">
+            <div className="mb-4 text-sm font-semibold uppercase tracking-[0.14em] text-slate-400">Trading psychology</div>
+            <div className="grid gap-3 md:grid-cols-2">
+              <InfoChip label="Before trade mood" value={journal.emotion || journal.beforeMood || '—'} />
+              <InfoChip label="After trade mood" value={journal.afterEmotion || journal.afterMood || '—'} />
+            </div>
+          </div>
+        </div>
+
+        <div className="space-y-6">
+          <div className="rounded-3xl border border-slate-800 bg-slate-900 p-4 shadow-glow">
+            <div className="mb-4 text-sm font-semibold uppercase tracking-[0.14em] text-slate-400">Execution notes</div>
+            <div className="space-y-3 text-sm leading-6 text-slate-300">
+              <p>{journal.notes || 'No notes were added for this trade.'}</p>
+            </div>
+          </div>
+
+          <div className="rounded-3xl border border-slate-800 bg-slate-900 p-4 shadow-glow">
+            <div className="mb-4 text-sm font-semibold uppercase tracking-[0.14em] text-slate-400">Lessons learned</div>
+            <div className="space-y-3 text-sm leading-6 text-slate-300">
+              <p>{journal.lesson || journal.lessonsLearned || 'No lesson recorded for this trade yet.'}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="rounded-3xl border border-slate-800 bg-slate-900 p-4 shadow-glow">
+        <div className="mb-4 text-sm font-semibold uppercase tracking-[0.14em] text-slate-400">Chart screenshots</div>
+        <div className="grid gap-4 md:grid-cols-3">
+          {(['4H', '15M', '5M']).map((timeframe) => (
+            <ChartImageCard
+              key={timeframe}
+              label={timeframe}
+              src={chartScreenshots[timeframe]}
+              alt={`${journal.asset || 'Trade'} ${timeframe} chart`}
+              onPreview={() => setSelectedImage(chartScreenshots[timeframe])}
+            />
+          ))}
+        </div>
+      </div>
+
+      {selectedImage && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 p-4" onClick={() => setSelectedImage(null)}>
+          <div className="relative w-full max-w-5xl rounded-3xl border border-slate-700 bg-slate-900 p-3 shadow-2xl" onClick={(event) => event.stopPropagation()}>
+            <button type="button" onClick={() => setSelectedImage(null)} className="absolute right-3 top-3 rounded-full border border-slate-700 bg-slate-950 p-2 text-slate-200 hover:border-slate-600">
+              <X className="h-4 w-4" />
+            </button>
+            <img src={selectedImage} alt="Trade chart preview" className="max-h-[80vh] w-full rounded-2xl object-contain" />
+          </div>
+        </div>
       )}
     </div>
   );
@@ -758,6 +996,7 @@ function JournalFormPage() {
   const [selectedPlanId, setSelectedPlanId] = useState('');
   const [screenshots, setScreenshots] = useState({ '4H': null, '15M': null, '5M': null });
   const [existingScreenshots, setExistingScreenshots] = useState({ '4H': null, '15M': null, '5M': null });
+  const [searchParams] = useSearchParams();
   const [form, setForm] = useState({
     asset: 'EURUSD',
     type: 'LONG',
@@ -797,9 +1036,9 @@ function JournalFormPage() {
         const response = await getJournalById(id);
         const journal = response?.data || response?.journal || response;
         const currentScreenshots = {
-          '4H': journal?.highTimeFrameImage || journal?.highTimeFrame || null,
-          '15M': journal?.mediumTimeFrameImage || journal?.mediumTimeFrame || null,
-          '5M': journal?.lowTimeFrameImage || journal?.lowTimeFrame || null,
+          '4H': getChartImageValue(journal, '4H'),
+          '15M': getChartImageValue(journal, '15M'),
+          '5M': getChartImageValue(journal, '5M'),
         };
 
         setForm({
@@ -887,6 +1126,8 @@ function JournalFormPage() {
     return <LoadingState label="Loading journal…" />;
   }
 
+  const selectedDate = searchParams.get('date');
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -894,7 +1135,11 @@ function JournalFormPage() {
           <div className="text-sm text-slate-400">{id ? 'Edit' : 'Create'} journal</div>
           <h2 className="text-2xl font-bold text-white">{id ? 'Trade details' : 'New trade journal'}</h2>
         </div>
-        <button onClick={() => navigate('/journal')} className="inline-flex items-center gap-2 rounded-xl border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-200 hover:border-slate-600">
+        <button
+          type="button"
+          onClick={() => navigate(`/journal${selectedDate ? `?date=${selectedDate}` : ''}`)}
+          className="inline-flex items-center gap-2 rounded-xl border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-200 hover:border-slate-600"
+        >
           <ArrowLeft className="h-4 w-4" /> Back
         </button>
       </div>
@@ -1397,10 +1642,61 @@ function AboutPage() {
   );
 }
 
+function ChartImageCard({ label, src, alt, onPreview }) {
+  const [loading, setLoading] = useState(Boolean(src));
+  const [hasError, setHasError] = useState(false);
+
+  useEffect(() => {
+    setLoading(Boolean(src));
+    setHasError(false);
+  }, [src]);
+
+  if (!src) {
+    return (
+      <div className="rounded-2xl border border-slate-800 bg-slate-950 p-3">
+        <div className="mb-2 text-sm font-medium text-slate-200">{label}</div>
+        <div className="flex h-40 items-center justify-center rounded-xl border border-dashed border-slate-700 bg-slate-900 px-3 text-center text-sm text-slate-400">
+          No chart image available
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="rounded-2xl border border-slate-800 bg-slate-950 p-3">
+      <div className="mb-2 text-sm font-medium text-slate-200">{label}</div>
+      <button type="button" onClick={onPreview} className="relative block w-full overflow-hidden rounded-xl border border-slate-700 bg-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500/60">
+        {loading && (
+          <div className="absolute inset-0 flex items-center justify-center bg-slate-900/80 text-xs uppercase tracking-[0.18em] text-slate-300">
+            Loading…
+          </div>
+        )}
+        {hasError ? (
+          <div className="flex h-40 items-center justify-center rounded-xl border border-dashed border-slate-700 bg-slate-900 px-3 text-center text-sm text-slate-400">
+            Image unavailable
+          </div>
+        ) : (
+          <img
+            src={src}
+            alt={alt}
+            className="h-40 w-full object-contain transition hover:scale-[1.01]"
+            loading="lazy"
+            onLoad={() => setLoading(false)}
+            onError={() => {
+              setLoading(false);
+              setHasError(true);
+            }}
+          />
+        )}
+      </button>
+    </div>
+  );
+}
+
 function ImageUploadField({ label, value, onChange, onRemove }) {
   const previewUrl = useMemo(() => {
     if (!value) return null;
-    if (typeof value === 'string') return value;
+    if (typeof value === 'string') return resolveImageUrl(value);
     if (value instanceof File) return URL.createObjectURL(value);
     return null;
   }, [value]);
