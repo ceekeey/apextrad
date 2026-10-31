@@ -19,16 +19,72 @@ import {
 
 const SERVER_URI = "https://jornal.rgmrabagardama.com.ng/api";
 
-const PAIRS = [
-    "EURUSD",
-    "GBPUSD",
-    "USDJPY",
-    "USDCHF",
-    "AUDUSD",
-    "USDCAD",
-    "XAUUSD",
-    "ETHUSD",
+
+const defaultPairs = [
+    // Forex
+    'EURUSD', 'GBPUSD', 'USDJPY', 'USDCHF',
+    'AUDUSD', 'USDCAD', 'NZDUSD',
+    'EURGBP', 'EURJPY', 'EURAUD', 'EURCAD', 'EURCHF',
+    'EURNZD', 'GBPAUD', 'GBPJPY', 'GBPCAD',
+    'GBPCHF', 'GBPNZD', 'AUDJPY', 'AUDCAD',
+    'AUDCHF', 'AUDNZD', 'NZDJPY', 'USDMXN', 'USDPLN',
+
+    // Metals
+    'XAUUSD', 'XAGUSD', 'XPTUSD', 'XPDUSD',
+
+    // Energies
+    'BRENT',
+
+    // Cryptocurrency
+    'BTCUSD', 'ETHUSD',
+
+    // Stock Indices
+    'US500', 'USTEC', 'WS30', 'AUS200',
+    'HK50', 'JPN225', 'EURO50', 'FRA40',
+    'GER40', 'NED25', 'SWI20', 'UK100',
+
+    // Stocks
+    'AAPL', 'MSFT', 'GOOG', 'NVDA',
+    'META', 'TSLA', 'AMZN', 'AMD', 'NFLX',
+
+    // Volatility Indices
+    'Volatility 10 Index',
+    'Volatility 25 Index',
+    'Volatility 50 Index',
+    'Volatility 75 Index',
+    'Volatility 100 Index',
+    'Volatility 10 (1s) Index',
+    'Volatility 25 (1s) Index',
+    'Volatility 50 (1s) Index',
+    'Volatility 75 (1s) Index',
+    'Volatility 100 (1s) Index',
+
+    // Boom & Crash
+    'Boom 300 Index',
+    'Boom 500 Index',
+    'Boom 600 Index',
+    'Boom 900 Index',
+    'Boom 1000 Index',
+    'Crash 300 Index',
+    'Crash 500 Index',
+    'Crash 600 Index',
+    'Crash 900 Index',
+    'Crash 1000 Index',
+
+    // Jump Indices
+    'Jump 10 Index',
+    'Jump 25 Index',
+    'Jump 50 Index',
+    'Jump 75 Index',
+    'Jump 100 Index',
+
+    // Other Derived Indices
+    'Step Index',
+    'Multi Step Index',
+    'Range Break 100 Index',
+    'Range Break 200 Index',
 ];
+
 
 const MOODS = [
     { label: "Focused", value: "FOCUSED", icon: "eye-outline" as const },

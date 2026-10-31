@@ -38,6 +38,7 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import { getJournals, getJournalById, createJournal, updateJournal, deleteJournal } from './api/journal.api';
 import { getPlans, createPlan, deletePlan, getPlanById } from './api/plans.api';
 import { getProfile, updateProfile } from './api/auth.api';
+import VoiceInput from './components/common/VoiceInput';
 
 const navItems = [
   { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -50,7 +51,74 @@ const navItems = [
 
 const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 const weekdayShort = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-const defaultPairs = ['EURUSD', 'GBPUSD', 'USDJPY', 'USDCHF', 'AUDUSD', 'USDCAD', 'XAUUSD', 'ETHUSD'];
+
+const defaultPairs = [
+  // Forex
+  'EURUSD', 'GBPUSD', 'USDJPY', 'USDCHF',
+  'AUDUSD', 'USDCAD', 'NZDUSD',
+  'EURGBP', 'EURJPY', 'EURAUD', 'EURCAD', 'EURCHF',
+  'EURNZD', 'GBPAUD', 'GBPJPY', 'GBPCAD',
+  'GBPCHF', 'GBPNZD', 'AUDJPY', 'AUDCAD',
+  'AUDCHF', 'AUDNZD', 'NZDJPY', 'USDMXN', 'USDPLN',
+
+  // Metals
+  'XAUUSD', 'XAGUSD', 'XPTUSD', 'XPDUSD',
+
+  // Energies
+  'BRENT',
+
+  // Cryptocurrency
+  'BTCUSD', 'ETHUSD',
+
+  // Stock Indices
+  'US500', 'USTEC', 'WS30', 'AUS200',
+  'HK50', 'JPN225', 'EURO50', 'FRA40',
+  'GER40', 'NED25', 'SWI20', 'UK100',
+
+  // Stocks
+  'AAPL', 'MSFT', 'GOOG', 'NVDA',
+  'META', 'TSLA', 'AMZN', 'AMD', 'NFLX',
+
+  // Volatility Indices
+  'Volatility 10 Index',
+  'Volatility 5 Index',
+  'Volatility 5 (1s) Index',
+  'Volatility 25 Index',
+  'Volatility 50 Index',
+  'Volatility 75 Index',
+  'Volatility 100 Index',
+  'Volatility 10 (1s) Index',
+  'Volatility 25 (1s) Index',
+  'Volatility 50 (1s) Index',
+  'Volatility 75 (1s) Index',
+  'Volatility 100 (1s) Index',
+
+  // Boom & Crash
+  'Boom 300 Index',
+  'Boom 500 Index',
+  'Boom 600 Index',
+  'Boom 900 Index',
+  'Boom 1000 Index',
+  'Crash 300 Index',
+  'Crash 500 Index',
+  'Crash 600 Index',
+  'Crash 900 Index',
+  'Crash 1000 Index',
+
+  // Jump Indices
+  'Jump 10 Index',
+  'Jump 25 Index',
+  'Jump 50 Index',
+  'Jump 75 Index',
+  'Jump 100 Index',
+
+  // Other Derived Indices
+  'Step Index',
+  'Multi Step Index',
+  'Range Break 100 Index',
+  'Range Break 200 Index',
+];
+
 const moodValues = ['FOCUSED', 'CONFIDENT', 'CALM', 'UNCERTAIN', 'FEARFUL', 'GREEDY'];
 
 const formatDateKey = (value) => {
@@ -1177,8 +1245,20 @@ function JournalFormPage() {
         <div className="rounded-3xl border border-slate-800 bg-slate-900 p-4 shadow-glow">
           <div className="mb-4 flex items-center gap-2 text-white"><FileText className="h-4 w-4 text-blue-300" /> <span className="font-semibold">Journal notes</span></div>
           <div className="space-y-4">
-            <textarea value={form.notes} onChange={(event) => updateField('notes', event.target.value)} rows="5" placeholder="Describe the setup, execution, and market context…" className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white placeholder:text-slate-500 focus:border-blue-500 focus:outline-none" />
-            <textarea value={form.lesson} onChange={(event) => updateField('lesson', event.target.value)} rows="3" placeholder="Lesson learned / takeaway…" className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white placeholder:text-slate-500 focus:border-blue-500 focus:outline-none" />
+            <VoiceInput
+              label="Trade notes"
+              value={form.notes}
+              onChange={(value) => updateField('notes', value)}
+              placeholder="Describe the setup, execution, and market context…"
+              rows={5}
+            />
+            <VoiceInput
+              label="Lessons learned"
+              value={form.lesson}
+              onChange={(value) => updateField('lesson', value)}
+              placeholder="Lesson learned / takeaway…"
+              rows={3}
+            />
           </div>
         </div>
 
