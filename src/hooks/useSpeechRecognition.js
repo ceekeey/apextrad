@@ -22,7 +22,9 @@ export const useSpeechRecognition = ({
   const timerRef = useRef(null);
   const lastFinalTranscriptRef = useRef("");
 
-  const [supported, setSupported] = useState(false);
+  const [supported, setSupported] = useState(() =>
+    Boolean(getSpeechRecognitionConstructor()),
+  );
   const [status, setStatus] = useState("idle");
   const [language, setLanguage] = useState(lang);
   const [transcript, setTranscript] = useState("");
@@ -226,10 +228,6 @@ export const useSpeechRecognition = ({
       return true;
     }
   }, [continuous, ensureRecognition, interimResults, language, startTimer]);
-
-  useEffect(() => {
-    setSupported(Boolean(getSpeechRecognitionConstructor()));
-  }, []);
 
   useEffect(() => {
     if (recognitionRef.current) {
